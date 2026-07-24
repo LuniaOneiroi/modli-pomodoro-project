@@ -468,8 +468,9 @@
 		announcement = 'Project image updated.';
 	}
 
-	function openSettings(): void {
-		settingsReturnFocus = document.activeElement as HTMLElement | null;
+	function openSettings(returnFocus?: HTMLElement): void {
+		settingsReturnFocus =
+			returnFocus ?? (document.activeElement as HTMLElement | null);
 		settingsOpen = true;
 		announcement = 'Settings opened.';
 	}

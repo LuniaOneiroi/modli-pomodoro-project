@@ -84,7 +84,7 @@
 		onReset: () => void;
 		onSelectFocusTask: (taskId: string | null) => void;
 		onSoundToggle: () => void;
-		onOpenSettings: () => void;
+		onOpenSettings: (returnFocus?: HTMLElement) => void;
 		onCloseSettings: () => void;
 		onSaveSettings: (settings: ModLiSettings) => void;
 		onPreviewSound: (volume: number) => void;
@@ -118,6 +118,8 @@
 		detailPanelOpen: boolean;
 		selectedTask: Task | null;
 	} = $props();
+
+	let settingsButton: HTMLButtonElement;
 </script>
 
 <article
@@ -215,11 +217,12 @@
 					: 'Ready when you are'}
 		</p>
 		<button
+			bind:this={settingsButton}
 			type="button"
 			class="utility-button"
 			aria-label="Open settings"
 			title="Settings"
-			onclick={onOpenSettings}
+			onclick={() => onOpenSettings(settingsButton)}
 		>
 			<Settings size={21} strokeWidth={1.8} />
 		</button>

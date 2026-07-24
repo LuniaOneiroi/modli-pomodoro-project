@@ -5,6 +5,22 @@ const APP_STATE_KEY = 'modli:state:v1';
 const IMAGE_DATABASE = 'modli-images';
 const IMAGE_STORE = 'project-images';
 
+interface StoredProjectImage {
+	bytes: ArrayBuffer;
+	type: string;
+}
+
+function isStoredProjectImage(value: unknown): value is StoredProjectImage {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'bytes' in value &&
+		value.bytes instanceof ArrayBuffer &&
+		'type' in value &&
+		typeof value.type === 'string'
+	);
+}
+
 export function loadBrowserAppState(): PersistedAppState | null {
 	try {
 		const raw = localStorage.getItem(APP_STATE_KEY);
@@ -38,9 +54,13 @@ export async function putProjectImage(
 	image: Blob,
 ): Promise<void> {
 	const database = await openImageDatabase();
+	const storedImage: StoredProjectImage = {
+		bytes: await image.arrayBuffer(),
+		type: image.type,
+	};
 	await new Promise<void>((resolve, reject) => {
 		const transaction = database.transaction(IMAGE_STORE, 'readwrite');
-		transaction.objectStore(IMAGE_STORE).put(image, imageId);
+		transaction.objectStore(IMAGE_STORE).put(storedImage, imageId);
 		transaction.oncomplete = () => resolve();
 		transaction.onerror = () => reject(transaction.error);
 	});
@@ -54,7 +74,18 @@ export async function getProjectImage(
 	const image = await new Promise<Blob | undefined>((resolve, reject) => {
 		const transaction = database.transaction(IMAGE_STORE, 'readonly');
 		const request = transaction.objectStore(IMAGE_STORE).get(imageId);
-		request.onsuccess = () => resolve(request.result as Blob | undefined);
+		request.onsuccess = () => {
+			const storedImage: unknown = request.result;
+			if (storedImage instanceof Blob) {
+				resolve(storedImage);
+				return;
+			}
+			resolve(
+				isStoredProjectImage(storedImage)
+					? new Blob([storedImage.bytes], { type: storedImage.type })
+					: undefined,
+			);
+		};
 		request.onerror = () => reject(request.error);
 	});
 	database.close();

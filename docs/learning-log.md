@@ -22,7 +22,7 @@ Project records and task records remain separate, while `src/domain/projects.ts`
 
 ## IndexedDB project images
 
-IndexedDB is the browser database intended for durable binary data such as uploaded images. ModLi stores image blobs in `src/storage/browserStorage.ts`, while project records keep only a small image identifier and the UI creates temporary object URLs when it needs to display the blob. This avoids placing multi-megabyte Base64 strings in `localStorage` and lets missing image records fall back to bundled liminal artwork. Keeping object URLs only for the current session was simpler, but project images disappeared whenever the page reloaded.
+IndexedDB is the browser database intended for durable binary data such as uploaded images. ModLi stores image byte records in `src/storage/browserStorage.ts`, while project records keep only a small image identifier and the adapter rebuilds a temporary Blob when the UI needs to display it. ArrayBuffer-backed records clone reliably in both Chromium and WebKit, and the reader still accepts older Blob records. This avoids placing multi-megabyte Base64 strings in `localStorage` and lets missing image records fall back to bundled liminal artwork.
 
 Before storage, `src/platform/images.ts` uses the browser canvas to limit oversized images to a practical display resolution and encode them as WebP. The adapter returns the original file when bitmap or canvas processing is unavailable, so uploading remains resilient rather than becoming browser-dependent. Storing every original file would require less code, but it would consume local storage quickly without improving the compact timer display.
 
@@ -55,3 +55,7 @@ The Tauri File System plugin stores processed project-image bytes beneath ModLi'
 ## Idempotent Pomodoro session actions
 
 A Pomodoro session record captures the project and optional task when the timer starts, so later project changes cannot redirect credit for work already underway. `src/state/sessions.ts` completes the history record, task count, and project streak in one pure action, and refuses to count an already ended session twice. Resetting preserves an incomplete history record with the elapsed whole minutes, while pausing keeps the same active record available for resuming. Updating these values independently inside UI callbacks would involve less initial code, but a single tested action makes reload recovery and future session-history views much safer.
+
+## Playwright end-to-end testing
+
+Playwright drives ModLi through the same accessible controls a person uses and verifies complete workflows across Chromium and WebKit. The configuration in `playwright.config.ts` starts an isolated Vite server, while `e2e/modli.spec.ts` covers timer restoration, task and project workflows, image persistence, Settings, keyboard focus, and malformed local data. Each test receives an isolated browser context so its local-first records cannot leak into another test. Component and domain tests are faster for individual rules, but Playwright catches integration and engine-specific behavior that unit tests cannot see.
