@@ -20,6 +20,16 @@ with Svelte 5, TypeScript, Vite, and Tauri 2.
 ModLi has no accounts, backend, cloud sync, analytics, or runtime CDN
 dependencies. Core functionality remains available offline.
 
+## Screenshots
+
+| Compact timer                                                                                      | Expanded project                                                                                       |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ![ModLi compact timer with project artwork and focus controls](docs/screenshots/modli-compact.png) | ![ModLi expanded project view with statistics and priority tasks](docs/screenshots/modli-expanded.png) |
+
+| Task details                                                                                 | Settings                                                                                      |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| ![ModLi task-details panel beside the active timer](docs/screenshots/modli-task-details.png) | ![ModLi Settings panel with timer and sound preferences](docs/screenshots/modli-settings.png) |
+
 ## Data and privacy
 
 Browser development stores structured state in `localStorage` and uploaded
