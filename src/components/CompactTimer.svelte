@@ -2,6 +2,7 @@
 	import type {
 		Project,
 		ProjectStatistics,
+		Task,
 		TimerMode,
 		TimerSnapshot,
 	} from '../domain/types';
@@ -18,6 +19,10 @@
 		onStart,
 		onPause,
 		onReset,
+		availableFocusTasks,
+		linkedFocusTask,
+		focusTaskLocked,
+		onSelectFocusTask,
 		completionMessage = null,
 	}: {
 		snapshot: TimerSnapshot;
@@ -28,6 +33,10 @@
 		onStart: () => void;
 		onPause: () => void;
 		onReset: () => void;
+		availableFocusTasks: Task[];
+		linkedFocusTask: Task | null;
+		focusTaskLocked: boolean;
+		onSelectFocusTask: (taskId: string | null) => void;
 		completionMessage?: string | null;
 	} = $props();
 
@@ -68,6 +77,31 @@
 		breakKind={snapshot.breakKind}
 		{completionMessage}
 	/>
+
+	<section class="focus-task" aria-labelledby="focus-task-label">
+		<label id="focus-task-label" for="focus-task-select">
+			{snapshot.mode === 'focus' ? 'Focus with' : 'Next focus'}
+		</label>
+		<select
+			id="focus-task-select"
+			value={linkedFocusTask?.id ?? ''}
+			disabled={focusTaskLocked}
+			aria-describedby={focusTaskLocked ? 'focus-task-status' : undefined}
+			onchange={(event) => onSelectFocusTask(event.currentTarget.value || null)}
+		>
+			<option value="">
+				{availableFocusTasks.length ? 'No linked task' : 'No active tasks'}
+			</option>
+			{#each availableFocusTasks as task (task.id)}
+				<option value={task.id}>{task.title}</option>
+			{/each}
+		</select>
+		{#if focusTaskLocked}
+			<span id="focus-task-status" class="sr-only">
+				Task selection is locked until this Focus session ends or resets.
+			</span>
+		{/if}
+	</section>
 
 	<section class="project-progress" aria-labelledby="project-progress-label">
 		<div>
@@ -125,6 +159,43 @@
 
 	.project-progress {
 		padding: 7px 18px 0;
+	}
+
+	.focus-task {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: center;
+		gap: 10px;
+		padding: 10px 18px 2px;
+	}
+
+	.focus-task label {
+		font: 600 0.67rem var(--font-ui);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+
+	.focus-task select {
+		min-width: 0;
+		height: 34px;
+		padding: 0 30px 0 10px;
+		border: 1px solid var(--border-subtle);
+		border-radius: 10px;
+		background-color: rgba(8, 25, 47, 0.78);
+		font: 500 0.72rem var(--font-ui);
+		text-overflow: ellipsis;
+		color: var(--text-primary);
+	}
+
+	.focus-task select:disabled {
+		cursor: not-allowed;
+		opacity: 0.68;
+	}
+
+	.focus-task select:focus-visible {
+		outline: 2px solid var(--accent-primary);
+		outline-offset: 2px;
 	}
 
 	.project-progress div {

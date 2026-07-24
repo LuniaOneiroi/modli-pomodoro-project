@@ -81,5 +81,6 @@ export interface TimerSnapshot {
 	remainingSeconds: number;
 	totalSeconds: number;
 	targetTimestamp: number | null;
+	completedFocusSessions: number;
 	breakKind?: 'short' | 'long';
 }

@@ -30,6 +30,18 @@ const taskSchema = z.object({
 	updatedAt: z.string(),
 });
 
+const pomodoroSessionSchema = z.object({
+	id: z.string().min(1),
+	mode: z.enum(['focus', 'break']),
+	projectId: z.string().optional(),
+	taskId: z.string().optional(),
+	plannedMinutes: z.number().int().positive(),
+	completedMinutes: z.number().int().nonnegative(),
+	completed: z.boolean(),
+	startedAt: z.string(),
+	endedAt: z.string().optional(),
+});
+
 const settingsSchema = z.object({
 	focusMinutes: z.number().int().positive(),
 	breakMinutes: z.number().int().positive(),
@@ -56,6 +68,7 @@ const timerSnapshotSchema = z.object({
 	remainingSeconds: z.number().int().nonnegative(),
 	totalSeconds: z.number().int().positive(),
 	targetTimestamp: z.number().nullable(),
+	completedFocusSessions: z.number().int().nonnegative().default(0),
 	breakKind: z.enum(['short', 'long']).optional(),
 });
 
@@ -63,8 +76,11 @@ export const persistedAppStateSchema = z.object({
 	version: z.literal(1),
 	projects: z.array(projectWorkspaceSchema),
 	tasks: z.array(taskSchema),
+	sessions: z.array(pomodoroSessionSchema).default([]),
 	settings: settingsSchema,
 	selectedProjectId: z.string(),
+	selectedFocusTaskId: z.string().nullable().default(null),
+	activeSessionId: z.string().nullable().default(null),
 	windowMode: windowModeSchema,
 	timer: timerSnapshotSchema.optional(),
 });

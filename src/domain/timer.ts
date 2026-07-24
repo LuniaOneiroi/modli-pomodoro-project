@@ -80,6 +80,7 @@ export class PomodoroTimer {
 			remainingSeconds: totalSeconds,
 			totalSeconds,
 			targetTimestamp: null,
+			completedFocusSessions: 0,
 		};
 	}
 
@@ -120,13 +121,17 @@ export class PomodoroTimer {
 
 	reset(): void {
 		this.#stopTicking();
-		const totalSeconds = durationInSeconds(this.#snapshot.mode, this.#settings);
+		const totalSeconds = this.#currentModeDuration();
 		this.#snapshot = {
 			mode: this.#snapshot.mode,
 			status: 'idle',
 			remainingSeconds: totalSeconds,
 			totalSeconds,
 			targetTimestamp: null,
+			completedFocusSessions: this.#completedFocusSessions,
+			...(this.#snapshot.mode === 'break'
+				? { breakKind: this.#snapshot.breakKind ?? ('short' as const) }
+				: {}),
 		};
 		this.#emit();
 	}
@@ -134,18 +139,18 @@ export class PomodoroTimer {
 	updateSettings(settings: ModLiSettings): void {
 		this.#settings = settings;
 		if (this.#snapshot.status !== 'running') {
-			const totalSeconds = durationInSeconds(
-				this.#snapshot.mode,
-				this.#settings,
-			);
+			const totalSeconds = this.#currentModeDuration(settings);
 			this.#snapshot = {
 				...this.#snapshot,
 				status: 'idle',
 				remainingSeconds: totalSeconds,
 				totalSeconds,
 				targetTimestamp: null,
+				completedFocusSessions: this.#completedFocusSessions,
 				...(this.#snapshot.mode === 'break'
-					? { breakKind: 'short' as const }
+					? {
+							breakKind: this.#snapshot.breakKind ?? ('short' as const),
+						}
 					: {}),
 			};
 			this.#emit();
@@ -158,7 +163,9 @@ export class PomodoroTimer {
 			...snapshot,
 			remainingSeconds: Math.max(0, snapshot.remainingSeconds),
 			totalSeconds: Math.max(1, snapshot.totalSeconds),
+			completedFocusSessions: Math.max(0, snapshot.completedFocusSessions),
 		};
+		this.#completedFocusSessions = this.#snapshot.completedFocusSessions;
 		if (
 			this.#snapshot.status === 'running' &&
 			this.#snapshot.targetTimestamp !== null
@@ -179,6 +186,7 @@ export class PomodoroTimer {
 			remainingSeconds: totalSeconds,
 			totalSeconds,
 			targetTimestamp: null,
+			completedFocusSessions: this.#completedFocusSessions,
 		};
 		this.#emit();
 	}
@@ -234,6 +242,7 @@ export class PomodoroTimer {
 			targetTimestamp: shouldAutoStart
 				? this.#now() + totalSeconds * 1000
 				: null,
+			completedFocusSessions: this.#completedFocusSessions,
 			...(mode === 'break'
 				? { breakKind: isLongBreak ? 'long' : 'short' }
 				: {}),
@@ -246,6 +255,13 @@ export class PomodoroTimer {
 	#beginTicking(): void {
 		this.#stopTicking();
 		this.#intervalId = globalThis.setInterval(() => this.tick(), 250);
+	}
+
+	#currentModeDuration(settings = this.#settings): number {
+		return this.#snapshot.mode === 'break' &&
+			this.#snapshot.breakKind === 'long'
+			? settings.longBreakMinutes * 60
+			: durationInSeconds(this.#snapshot.mode, settings);
 	}
 
 	#stopTicking(): void {

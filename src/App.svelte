@@ -10,6 +10,7 @@
 	import type {
 		ProjectWorkspace,
 		ModLiSettings,
+		PomodoroSession,
 		Task,
 		TimerMode,
 		TimerSnapshot,
@@ -26,6 +27,11 @@
 		setDesktopAlwaysOnTop,
 	} from './platform/window';
 	import { createProjectWorkspace } from './state/projects';
+	import {
+		abandonPomodoroSession,
+		completePomodoroSession,
+		createPomodoroSession,
+	} from './state/sessions';
 	import { createTaskRecord } from './domain/tasks';
 	import {
 		deleteProjectImage,
@@ -40,7 +46,10 @@
 	let completionMessage = $state<string | null>(null);
 	let windowMode = $state<WindowMode>('compact');
 	let projects = $state<ProjectWorkspace[]>(structuredClone(SAMPLE_PROJECTS));
+	let sessions = $state<PomodoroSession[]>([]);
 	let selectedProjectId = $state(SAMPLE_PROJECTS[0]!.project.id);
+	let selectedFocusTaskId = $state<string | null>(null);
+	let activeSessionId = $state<string | null>(null);
 	let projectFormOpen = $state(false);
 	let projectImageUrls = $state<Record<string, string>>({});
 	let detailPanelOpen = $state(false);
@@ -52,6 +61,7 @@
 		remainingSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
 		totalSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
 		targetTimestamp: null,
+		completedFocusSessions: 0,
 	});
 	const uploadedImageUrls: string[] = [];
 	let completionTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
@@ -76,8 +86,32 @@
 	let selectedTask = $derived(
 		tasks.find((task) => task.id === selectedTaskId) ?? null,
 	);
+	let linkedFocusTask = $derived(
+		tasks.find((task) => task.id === selectedFocusTaskId) ?? null,
+	);
+	let availableFocusTasks = $derived.by(() => {
+		const projectTasks = tasks.filter(
+			(task) =>
+				task.projectId === selectedProjectId && task.status === 'in_progress',
+		);
+		if (
+			linkedFocusTask &&
+			!projectTasks.some((task) => task.id === linkedFocusTask?.id)
+		) {
+			return [linkedFocusTask, ...projectTasks];
+		}
+		return projectTasks;
+	});
 
 	const timer = new PomodoroTimer(DEFAULT_SETTINGS, (completedMode) => {
+		const completion = completePomodoroSession(
+			{ sessions, tasks, projects },
+			activeSessionId,
+		);
+		sessions = completion.sessions;
+		tasks = completion.tasks;
+		projects = completion.projects;
+		activeSessionId = null;
 		completionMessage =
 			completedMode === 'focus' ? 'Session complete' : 'Break complete';
 		announcement = `${completedMode === 'focus' ? 'Focus' : 'Break'} session complete. ${completedMode === 'focus' ? 'Break' : 'Focus'} mode is ready.`;
@@ -91,13 +125,12 @@
 				announcement += ' The browser could not play the alert sound.';
 			});
 		}
-		if (completedMode === 'focus') {
-			projects = projects.map((workspace) =>
-				workspace.project.id === selectedProjectId
-					? { ...workspace, focusStreak: workspace.focusStreak + 1 }
-					: workspace,
-			);
-		}
+		globalThis.queueMicrotask(() => {
+			const nextSnapshot = timer.snapshot;
+			if (nextSnapshot.status === 'running' && !activeSessionId) {
+				beginTimerSession(nextSnapshot);
+			}
+		});
 	});
 
 	const unsubscribe = timer.subscribe((nextSnapshot) => {
@@ -105,19 +138,60 @@
 	});
 
 	function changeMode(mode: TimerMode): void {
+		if (activeSessionId) abandonActiveTimerSession();
 		announcement = `${mode === 'focus' ? 'Focus' : 'Break'} mode selected.`;
 		timer.setMode(mode);
 	}
 
+	function beginTimerSession(nextSnapshot: TimerSnapshot): void {
+		if (activeSessionId) return;
+		const task =
+			nextSnapshot.mode === 'focus' &&
+			linkedFocusTask?.projectId === selectedProjectId &&
+			linkedFocusTask.status === 'in_progress'
+				? linkedFocusTask
+				: null;
+		const session = createPomodoroSession({
+			mode: nextSnapshot.mode,
+			totalSeconds: nextSnapshot.totalSeconds,
+			projectId: selectedProjectId,
+			taskId: task?.id,
+		});
+		sessions = [...sessions, session];
+		activeSessionId = session.id;
+	}
+
 	function startTimer(): void {
 		if (settings.soundEnabled) void prepareTimerSound().catch(() => undefined);
+		if (!activeSessionId) beginTimerSession(timer.snapshot);
 		timer.start();
 	}
 
+	function pauseTimer(): void {
+		timer.pause();
+	}
+
+	function abandonActiveTimerSession(): PomodoroSession | null {
+		if (snapshot.status === 'running') timer.pause();
+		const activeSession =
+			sessions.find((session) => session.id === activeSessionId) ?? null;
+		const latestSnapshot = timer.snapshot;
+		sessions = abandonPomodoroSession(
+			sessions,
+			activeSessionId,
+			latestSnapshot.totalSeconds - latestSnapshot.remainingSeconds,
+		);
+		activeSessionId = null;
+		return activeSession;
+	}
+
 	function resetTimer(): void {
-		if (snapshot.mode === 'focus' && snapshot.status === 'running') {
+		const abandonedSession = activeSessionId
+			? abandonActiveTimerSession()
+			: null;
+		if (abandonedSession?.mode === 'focus' && abandonedSession.projectId) {
 			projects = projects.map((workspace) =>
-				workspace.project.id === selectedProjectId
+				workspace.project.id === abandonedSession.projectId
 					? { ...workspace, focusStreak: 0 }
 					: workspace,
 			);
@@ -132,6 +206,16 @@
 
 	function selectProject(projectId: string): void {
 		selectedProjectId = projectId;
+		const activeSession = sessions.find(
+			(session) => session.id === activeSessionId,
+		);
+		if (
+			!activeSession ||
+			activeSession.mode !== 'focus' ||
+			activeSession.taskId !== selectedFocusTaskId
+		) {
+			selectedFocusTaskId = null;
+		}
 		detailPanelOpen = false;
 		selectedTaskId = null;
 		projectFormOpen = false;
@@ -140,6 +224,20 @@
 		);
 		if (project)
 			announcement = `${project.project.name} selected. Project details updated.`;
+	}
+
+	function selectFocusTask(taskId: string | null): void {
+		if (activeSessionId && snapshot.mode === 'focus') return;
+		const task = tasks.find(
+			(item) =>
+				item.id === taskId &&
+				item.projectId === selectedProjectId &&
+				item.status === 'in_progress',
+		);
+		selectedFocusTaskId = task?.id ?? null;
+		announcement = task
+			? `${task.title} linked to the next Focus session.`
+			: 'The next Focus session will run without a linked task.';
 	}
 
 	function openProjectForm(): void {
@@ -207,6 +305,16 @@
 					}
 				: task,
 		);
+		const activeSession = sessions.find(
+			(session) => session.id === activeSessionId,
+		);
+		if (
+			nextStatus !== 'in_progress' &&
+			selectedFocusTaskId === taskId &&
+			activeSession?.taskId !== taskId
+		) {
+			selectedFocusTaskId = null;
+		}
 		announcement = `${currentTask.title} marked ${nextStatus === 'completed' ? 'complete' : 'in progress'}.`;
 	}
 
@@ -217,12 +325,23 @@
 		if (updatedTask.projectId !== selectedProjectId) {
 			selectedProjectId = updatedTask.projectId;
 		}
+		const activeSession = sessions.find(
+			(session) => session.id === activeSessionId,
+		);
+		if (
+			selectedFocusTaskId === updatedTask.id &&
+			updatedTask.status !== 'in_progress' &&
+			activeSession?.taskId !== updatedTask.id
+		) {
+			selectedFocusTaskId = null;
+		}
 		announcement = `${updatedTask.title} saved.`;
 	}
 
 	function deleteTask(taskId: string): void {
 		const task = tasks.find((item) => item.id === taskId);
 		tasks = tasks.filter((item) => item.id !== taskId);
+		if (selectedFocusTaskId === taskId) selectedFocusTaskId = null;
 		closeDetailPanel();
 		announcement = task ? `${task.title} deleted.` : 'Task deleted.';
 	}
@@ -363,6 +482,9 @@
 	}
 
 	function saveSettings(nextSettings: ModLiSettings): void {
+		if (activeSessionId && snapshot.status !== 'running') {
+			abandonActiveTimerSession();
+		}
 		settings = nextSettings;
 		timer.updateSettings(nextSettings);
 		void setDesktopAlwaysOnTop(nextSettings.alwaysOnTop);
@@ -399,17 +521,65 @@
 				? persisted.projects
 				: structuredClone(SAMPLE_PROJECTS);
 			tasks = persisted.tasks;
+			sessions = persisted.sessions;
 			settings = { ...DEFAULT_SETTINGS, ...persisted.settings };
 			selectedProjectId = projects.some(
 				(workspace) => workspace.project.id === persisted.selectedProjectId,
 			)
 				? persisted.selectedProjectId
 				: projects[0]!.project.id;
+			activeSessionId = sessions.some(
+				(session) =>
+					session.id === persisted.activeSessionId &&
+					!session.completed &&
+					!session.endedAt,
+			)
+				? persisted.activeSessionId
+				: null;
+			const restoredActiveSession = sessions.find(
+				(session) => session.id === activeSessionId,
+			);
+			selectedFocusTaskId =
+				restoredActiveSession?.mode === 'focus' &&
+				tasks.some((task) => task.id === restoredActiveSession.taskId)
+					? (restoredActiveSession.taskId ?? null)
+					: tasks.some(
+								(task) =>
+									task.id === persisted.selectedFocusTaskId &&
+									task.status === 'in_progress',
+						  )
+						? persisted.selectedFocusTaskId
+						: null;
 			windowMode = settings.rememberWindow
 				? persisted.windowMode
 				: settings.lastWindowMode;
 			timer.updateSettings(settings);
-			if (persisted.timer) timer.restore(persisted.timer);
+			if (persisted.timer) {
+				if (persisted.timer.status !== 'idle' && !activeSessionId) {
+					const restoredTask = tasks.find(
+						(task) => task.id === selectedFocusTaskId,
+					);
+					const elapsedSeconds =
+						persisted.timer.totalSeconds - persisted.timer.remainingSeconds;
+					const inferredStart = new Date(
+						Date.now() - Math.max(0, elapsedSeconds) * 1000,
+					).toISOString();
+					const restoredSession = createPomodoroSession(
+						{
+							mode: persisted.timer.mode,
+							totalSeconds: persisted.timer.totalSeconds,
+							projectId: selectedProjectId,
+							taskId:
+								persisted.timer.mode === 'focus' ? restoredTask?.id : undefined,
+						},
+						() => crypto.randomUUID(),
+						() => inferredStart,
+					);
+					sessions = [...sessions, restoredSession];
+					activeSessionId = restoredSession.id;
+				}
+				timer.restore(persisted.timer);
+			}
 		}
 		hydrated = true;
 		await tick();
@@ -449,6 +619,7 @@
 			version: 1,
 			projects,
 			tasks,
+			sessions,
 			settings: {
 				...settings,
 				lastProjectId: selectedProjectId,
@@ -457,6 +628,8 @@
 					: settings.lastWindowMode,
 			},
 			selectedProjectId,
+			selectedFocusTaskId,
+			activeSessionId,
 			windowMode,
 			timer: snapshot,
 		}).catch(() => {
@@ -506,6 +679,9 @@
 		statistics={projectStatistics}
 		{highPriorityTasks}
 		{selectedProjectImageUrl}
+		{availableFocusTasks}
+		{linkedFocusTask}
+		{activeSessionId}
 		{completionMessage}
 		{projectFormOpen}
 		onCreateTask={createTask}
@@ -520,8 +696,9 @@
 		{selectedTask}
 		onModeChange={changeMode}
 		onStart={startTimer}
-		onPause={() => timer.pause()}
+		onPause={pauseTimer}
 		onReset={resetTimer}
+		onSelectFocusTask={selectFocusTask}
 		onSoundToggle={toggleSound}
 		onOpenSettings={openSettings}
 		onCloseSettings={closeSettings}

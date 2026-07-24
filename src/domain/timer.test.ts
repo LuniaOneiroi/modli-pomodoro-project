@@ -28,6 +28,7 @@ describe('timer calculations', () => {
 				remainingSeconds: 750,
 				totalSeconds: 1500,
 				targetTimestamp: 1,
+				completedFocusSessions: 0,
 			}),
 		).toBe(0.5);
 	});
@@ -140,11 +141,71 @@ describe('PomodoroTimer', () => {
 			remainingSeconds: 5,
 			totalSeconds: 1500,
 			targetTimestamp: 10_000,
+			completedFocusSessions: 0,
 		});
 		timer.tick();
 
 		expect(onComplete).toHaveBeenCalledOnce();
 		expect(timer.snapshot.mode).toBe('break');
+		timer.destroy();
+	});
+
+	it('restores the completed Focus count used for long-break cadence', () => {
+		let now = 0;
+		const timer = new PomodoroTimer(
+			{
+				...DEFAULT_SETTINGS,
+				focusMinutes: 1,
+				focusSessionsBeforeLongBreak: 2,
+				longBreakMinutes: 12,
+			},
+			undefined,
+			() => now,
+		);
+
+		timer.restore({
+			mode: 'focus',
+			status: 'idle',
+			remainingSeconds: 60,
+			totalSeconds: 60,
+			targetTimestamp: null,
+			completedFocusSessions: 1,
+		});
+		timer.start();
+		now = 60_000;
+		timer.tick();
+
+		expect(timer.snapshot).toMatchObject({
+			mode: 'break',
+			breakKind: 'long',
+			completedFocusSessions: 2,
+		});
+		timer.destroy();
+	});
+
+	it('keeps a long break long when it is reset', () => {
+		const timer = new PomodoroTimer({
+			...DEFAULT_SETTINGS,
+			longBreakMinutes: 12,
+		});
+
+		timer.restore({
+			mode: 'break',
+			status: 'paused',
+			remainingSeconds: 300,
+			totalSeconds: 720,
+			targetTimestamp: null,
+			completedFocusSessions: 4,
+			breakKind: 'long',
+		});
+		timer.reset();
+
+		expect(timer.snapshot).toMatchObject({
+			mode: 'break',
+			breakKind: 'long',
+			remainingSeconds: 720,
+			totalSeconds: 720,
+		});
 		timer.destroy();
 	});
 });

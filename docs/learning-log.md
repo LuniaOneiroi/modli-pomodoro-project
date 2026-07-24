@@ -51,3 +51,7 @@ The Window State plugin separately remembers the native window's position and si
 ## Native project-image files
 
 The Tauri File System plugin stores processed project-image bytes beneath ModLi's private application-data directory instead of inside the desktop webview database. `src/storage/imageStorage.ts` routes browser builds to IndexedDB and desktop builds to `src/storage/desktopImageStorage.ts`; when it finds an older IndexedDB image in the desktop app, it copies that image into native storage on first read. The Tauri capability grants access only to the `project-images` folder and only for the file operations this adapter uses. Keeping IndexedDB in the desktop build would be simpler, but native app-data files are easier to migrate, back up, and manage independently of a particular webview.
+
+## Idempotent Pomodoro session actions
+
+A Pomodoro session record captures the project and optional task when the timer starts, so later project changes cannot redirect credit for work already underway. `src/state/sessions.ts` completes the history record, task count, and project streak in one pure action, and refuses to count an already ended session twice. Resetting preserves an incomplete history record with the elapsed whole minutes, while pausing keeps the same active record available for resuming. Updating these values independently inside UI callbacks would involve less initial code, but a single tested action makes reload recovery and future session-history views much safer.

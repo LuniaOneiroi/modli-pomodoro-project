@@ -28,12 +28,16 @@
 		statistics,
 		highPriorityTasks,
 		selectedProjectImageUrl,
+		availableFocusTasks,
+		linkedFocusTask,
+		activeSessionId,
 		completionMessage,
 		projectFormOpen,
 		onModeChange,
 		onStart,
 		onPause,
 		onReset,
+		onSelectFocusTask,
 		onSoundToggle,
 		onOpenSettings,
 		onCloseSettings,
@@ -69,12 +73,16 @@
 		statistics: ProjectStatistics;
 		highPriorityTasks: Task[];
 		selectedProjectImageUrl?: string;
+		availableFocusTasks: Task[];
+		linkedFocusTask: Task | null;
+		activeSessionId: string | null;
 		completionMessage?: string | null;
 		projectFormOpen: boolean;
 		onModeChange: (mode: TimerMode) => void;
 		onStart: () => void;
 		onPause: () => void;
 		onReset: () => void;
+		onSelectFocusTask: (taskId: string | null) => void;
 		onSoundToggle: () => void;
 		onOpenSettings: () => void;
 		onCloseSettings: () => void;
@@ -147,6 +155,10 @@
 				{onStart}
 				{onPause}
 				{onReset}
+				{availableFocusTasks}
+				{linkedFocusTask}
+				focusTaskLocked={Boolean(activeSessionId && snapshot.mode === 'focus')}
+				{onSelectFocusTask}
 				{completionMessage}
 			/>
 		</section>
