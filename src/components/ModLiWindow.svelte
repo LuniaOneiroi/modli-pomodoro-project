@@ -22,6 +22,7 @@
 		settings,
 		settingsOpen,
 		windowMode,
+		desktopRuntime,
 		projects,
 		selectedWorkspace,
 		statistics,
@@ -39,6 +40,9 @@
 		onSaveSettings,
 		onPreviewSound,
 		onToggleWindowMode,
+		onTogglePin,
+		onMinimizeWindow,
+		onCloseWindow,
 		onSelectProject,
 		onOpenProjectForm,
 		onCloseProjectForm,
@@ -59,6 +63,7 @@
 		settings: ModLiSettings;
 		settingsOpen: boolean;
 		windowMode: WindowMode;
+		desktopRuntime: boolean;
 		projects: ProjectWorkspace[];
 		selectedWorkspace: ProjectWorkspace;
 		statistics: ProjectStatistics;
@@ -76,6 +81,9 @@
 		onSaveSettings: (settings: ModLiSettings) => void;
 		onPreviewSound: (volume: number) => void;
 		onToggleWindowMode: () => void;
+		onTogglePin: () => void;
+		onMinimizeWindow: () => void;
+		onCloseWindow: () => void;
 		onSelectProject: (projectId: string) => void;
 		onOpenProjectForm: () => void;
 		onCloseProjectForm: () => void;
@@ -112,7 +120,15 @@
 >
 	<div class="corner corner--top-left" aria-hidden="true"></div>
 	<div class="corner corner--top-right" aria-hidden="true"></div>
-	<CustomTitleBar {windowMode} {onToggleWindowMode} />
+	<CustomTitleBar
+		{windowMode}
+		{desktopRuntime}
+		alwaysOnTop={settings.alwaysOnTop}
+		{onToggleWindowMode}
+		{onTogglePin}
+		onMinimize={onMinimizeWindow}
+		onClose={onCloseWindow}
+	/>
 
 	<div class="workspace-layout">
 		<section class="compact-column" aria-label="Timer and project selection">

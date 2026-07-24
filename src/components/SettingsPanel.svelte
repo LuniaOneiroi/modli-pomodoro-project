@@ -231,9 +231,13 @@
 					<input type="checkbox" bind:checked={draft.rememberWindow} />
 					<span>Remember the last view</span>
 				</label>
+				<label class="toggle">
+					<input type="checkbox" bind:checked={draft.alwaysOnTop} />
+					<span>Keep ModLi above other windows</span>
+				</label>
 				<p class="support-note">
-					Always-on-top, tray, startup, and native window positioning remain
-					deferred until the Tauri desktop shell.
+					The desktop app remembers its native position and size. Browser
+					preview ignores desktop-only window controls.
 				</p>
 			</section>
 

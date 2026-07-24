@@ -1,49 +1,21 @@
-import type {
-	ModLiSettings,
-	ProjectWorkspace,
-	Task,
-	TimerSnapshot,
-	WindowMode,
-} from '../domain/types';
+import type { PersistedAppState } from './appState';
+import { parsePersistedAppState } from './appState';
 
 const APP_STATE_KEY = 'modli:state:v1';
 const IMAGE_DATABASE = 'modli-images';
 const IMAGE_STORE = 'project-images';
 
-export interface PersistedAppState {
-	version: 1;
-	projects: ProjectWorkspace[];
-	tasks: Task[];
-	settings: ModLiSettings;
-	selectedProjectId: string;
-	windowMode: WindowMode;
-	timer?: TimerSnapshot;
-}
-
-export function loadAppState(): PersistedAppState | null {
+export function loadBrowserAppState(): PersistedAppState | null {
 	try {
 		const raw = localStorage.getItem(APP_STATE_KEY);
 		if (!raw) return null;
-		const parsed: unknown = JSON.parse(raw);
-		if (
-			typeof parsed !== 'object' ||
-			parsed === null ||
-			!('version' in parsed) ||
-			parsed.version !== 1 ||
-			!('projects' in parsed) ||
-			!Array.isArray(parsed.projects) ||
-			!('tasks' in parsed) ||
-			!Array.isArray(parsed.tasks)
-		) {
-			return null;
-		}
-		return parsed as PersistedAppState;
+		return parsePersistedAppState(JSON.parse(raw));
 	} catch {
 		return null;
 	}
 }
 
-export function saveAppState(state: PersistedAppState): void {
+export function saveBrowserAppState(state: PersistedAppState): void {
 	localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
 }
 

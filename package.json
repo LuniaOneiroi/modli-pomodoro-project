@@ -5,15 +5,22 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
+		"desktop:dev": "tauri dev",
+		"desktop:build": "tauri build",
 		"check": "svelte-check --tsconfig ./tsconfig.app.json",
 		"lint": "eslint . && prettier --check .",
 		"format": "prettier --write .",
 		"test": "vitest run",
-		"build": "vite build"
+		"build": "vite build",
+		"tauri": "tauri"
 	},
 	"dependencies": {
 		"@lucide/svelte": "^1.25.0",
 		"@playwright/cli": "^0.1.17",
+		"@tauri-apps/api": "^2.11.1",
+		"@tauri-apps/plugin-fs": "~2.5.1",
+		"@tauri-apps/plugin-store": "~2.4.4",
+		"@tauri-apps/plugin-window-state": "~2.4.1",
 		"pnpm": "^11.14.0",
 		"sharp": "^0.35.3",
 		"svgo": "^4.0.2",
@@ -22,6 +29,7 @@
 	"devDependencies": {
 		"@eslint/js": "^9.39.5",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"@tauri-apps/cli": "^2.11.4",
 		"eslint": "^9.39.5",
 		"eslint-plugin-svelte": "^3.20.0",
 		"globals": "^17.7.0",

@@ -1,0 +1,33 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Window controls available to the ModLi main window",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"core:window:allow-close",
+		"core:window:allow-minimize",
+		"core:window:allow-set-always-on-top",
+		"core:window:allow-set-size",
+		"core:window:allow-start-dragging",
+		"store:default",
+		"fs:deny-default",
+		"fs:create-app-specific-dirs",
+		{
+			"identifier": "fs:allow-mkdir",
+			"allow": [{ "path": "$APPDATA/project-images" }]
+		},
+		{
+			"identifier": "fs:allow-read-file",
+			"allow": [{ "path": "$APPDATA/project-images/*" }]
+		},
+		{
+			"identifier": "fs:allow-write-file",
+			"allow": [{ "path": "$APPDATA/project-images/*" }]
+		},
+		{
+			"identifier": "fs:allow-remove",
+			"allow": [{ "path": "$APPDATA/project-images/*" }]
+		}
+	]
+}

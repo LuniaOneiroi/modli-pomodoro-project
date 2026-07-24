@@ -37,3 +37,17 @@ Semantic CSS variables name a visual role—such as `--surface`, `--border-activ
 ## Persisted timer restoration
 
 ModLi saves its timer snapshot alongside projects, tasks, selections, and settings. `PomodoroTimer.restore` resumes a future target timestamp or resolves an already expired target through the same completion path used by a live timer, preventing a second completion callback. This keeps the target-timestamp model intact and lets the browser recover from reloads without subtracting guessed elapsed seconds. Resetting the timer on every reload would be simpler, but it would interrupt the core focus workflow.
+
+## Tauri desktop shell and window adapter
+
+Tauri 2 packages the existing Svelte interface inside a native desktop window while keeping the frontend code and browser development workflow intact. ModLi keeps minimize, close, drag, resize, and always-on-top calls in `src/platform/window.ts`, where each operation safely becomes a no-op outside the desktop runtime. The `src-tauri/` directory contains the small Rust entry point, window configuration, bundle metadata, and narrowly scoped permissions that allow those controls. Rebuilding the interface with a native UI toolkit could provide deeper platform integration, but it would duplicate the working Svelte application and make browser-based development harder.
+
+## Application-local desktop persistence
+
+The Tauri Store plugin writes structured ModLi state to `modli-state.json` in the operating system's application-data directory, while the browser build continues to use `localStorage`. `src/storage/appStorage.ts` chooses the correct adapter and migrates a valid legacy webview state into the desktop store the first time it is found. Zod validates untrusted JSON at the persistence boundary before projects, tasks, settings, or timer state reach the UI. Keeping `localStorage` everywhere would require less code, but it ties important desktop data to a particular webview origin and makes future migrations harder.
+
+The Window State plugin separately remembers the native window's position and size. Its Rust configuration stores only those two properties, while ModLi's existing state continues to own semantic choices such as compact versus expanded mode and always-on-top. Saving all native window flags would be simpler, but it could restore inappropriate fullscreen, visibility, or decoration states for a small focus companion.
+
+## Native project-image files
+
+The Tauri File System plugin stores processed project-image bytes beneath ModLi's private application-data directory instead of inside the desktop webview database. `src/storage/imageStorage.ts` routes browser builds to IndexedDB and desktop builds to `src/storage/desktopImageStorage.ts`; when it finds an older IndexedDB image in the desktop app, it copies that image into native storage on first read. The Tauri capability grants access only to the `project-images` folder and only for the file operations this adapter uses. Keeping IndexedDB in the desktop build would be simpler, but native app-data files are easier to migrate, back up, and manage independently of a particular webview.

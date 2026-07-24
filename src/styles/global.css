@@ -121,6 +121,10 @@ textarea:focus-visible {
 	padding: 28px 16px 22px;
 }
 
+.app-stage--desktop {
+	padding-inline: 10px;
+}
+
 .app-stage[data-theme='liminal'] {
 	--accent-primary: #a8d1e5;
 	--accent-secondary: #759ab2;
@@ -167,6 +171,10 @@ textarea:focus-visible {
 	letter-spacing: 0.15em;
 	text-align: center;
 	text-transform: uppercase;
+}
+
+.app-stage--desktop .milestone-note {
+	color: var(--text-secondary);
 }
 
 .app-stage--expanded .milestone-note {

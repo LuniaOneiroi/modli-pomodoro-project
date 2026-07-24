@@ -4,31 +4,53 @@
 
 	let {
 		windowMode,
+		desktopRuntime,
+		alwaysOnTop,
 		onToggleWindowMode,
-	}: { windowMode: WindowMode; onToggleWindowMode: () => void } = $props();
+		onTogglePin,
+		onMinimize,
+		onClose,
+	}: {
+		windowMode: WindowMode;
+		desktopRuntime: boolean;
+		alwaysOnTop: boolean;
+		onToggleWindowMode: () => void;
+		onTogglePin: () => void;
+		onMinimize: () => void;
+		onClose: () => void;
+	} = $props();
 </script>
 
-<header class="title-bar">
+<header class="title-bar" data-tauri-drag-region="deep">
 	<div class="drag-mark" aria-hidden="true">
 		<Grip size={18} strokeWidth={1.8} />
 	</div>
 	<div class="brand-rule" aria-hidden="true"></div>
 	<p class="brand">ModLi</p>
 	<div class="brand-rule brand-rule--right" aria-hidden="true"></div>
-	<nav aria-label="Window controls">
+	<nav aria-label="Window controls" data-tauri-drag-region="false">
 		<button
 			type="button"
-			disabled
-			title="Pin is available in the desktop milestone"
-			aria-label="Pin window"
+			disabled={!desktopRuntime}
+			title={desktopRuntime
+				? alwaysOnTop
+					? 'Unpin window'
+					: 'Keep window on top'
+				: 'Pin is available in the desktop app'}
+			aria-label={alwaysOnTop ? 'Unpin window' : 'Pin window'}
+			aria-pressed={alwaysOnTop}
+			onclick={onTogglePin}
 		>
 			<Pin size={17} strokeWidth={1.8} />
 		</button>
 		<button
 			type="button"
-			disabled
-			title="Minimize is available in the desktop milestone"
+			disabled={!desktopRuntime}
+			title={desktopRuntime
+				? 'Minimize window'
+				: 'Minimize is available in the desktop app'}
 			aria-label="Minimize window"
+			onclick={onMinimize}
 		>
 			<Minus size={18} strokeWidth={1.8} />
 		</button>
@@ -52,9 +74,12 @@
 		</button>
 		<button
 			type="button"
-			disabled
-			title="Close is available in the desktop milestone"
+			disabled={!desktopRuntime}
+			title={desktopRuntime
+				? 'Close window'
+				: 'Close is available in the desktop app'}
 			aria-label="Close window"
+			onclick={onClose}
 		>
 			<X size={18} strokeWidth={1.8} />
 		</button>

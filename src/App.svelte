@@ -17,15 +17,22 @@
 	} from './domain/types';
 	import { playTimerChime, prepareTimerSound } from './platform/sound';
 	import { prepareProjectImage } from './platform/images';
+	import {
+		closeDesktopWindow,
+		initializeDesktopWindow,
+		isDesktopRuntime,
+		minimizeDesktopWindow,
+		resizeDesktopWindow,
+		setDesktopAlwaysOnTop,
+	} from './platform/window';
 	import { createProjectWorkspace } from './state/projects';
 	import { createTaskRecord } from './domain/tasks';
 	import {
 		deleteProjectImage,
 		getProjectImage,
-		loadAppState,
 		putProjectImage,
-		saveAppState,
-	} from './storage/browserStorage';
+	} from './storage/imageStorage';
+	import { loadAppState, saveAppState } from './storage/appStorage';
 
 	let settings = $state<ModLiSettings>(structuredClone(DEFAULT_SETTINGS));
 	let soundEnabled = $derived(settings.soundEnabled);
@@ -52,6 +59,7 @@
 	let settingsReturnFocus: HTMLElement | null = null;
 	let hydrated = $state(false);
 	let tasks = $state<Task[]>(SAMPLE_TASKS);
+	const desktopRuntime = isDesktopRuntime();
 	let selectedWorkspace = $derived(
 		projects.find((workspace) => workspace.project.id === selectedProjectId) ??
 			projects[0]!,
@@ -136,7 +144,7 @@
 
 	function openProjectForm(): void {
 		projectFormReturnFocus = document.activeElement as HTMLElement | null;
-		windowMode = 'expanded';
+		setWindowMode('expanded');
 		detailPanelOpen = false;
 		selectedTaskId = null;
 		projectFormOpen = true;
@@ -144,7 +152,7 @@
 	}
 
 	function openProjectDetails(): void {
-		windowMode = 'expanded';
+		setWindowMode('expanded');
 		projectFormOpen = false;
 		detailPanelOpen = true;
 		selectedTaskId = null;
@@ -152,7 +160,7 @@
 	}
 
 	function openTaskDetails(taskId: string): void {
-		windowMode = 'expanded';
+		setWindowMode('expanded');
 		projectFormOpen = false;
 		detailPanelOpen = true;
 		selectedTaskId = taskId;
@@ -226,8 +234,13 @@
 		projectFormReturnFocus?.focus();
 	}
 
+	function setWindowMode(nextMode: WindowMode): void {
+		windowMode = nextMode;
+		void tick().then(() => resizeDesktopWindow(nextMode));
+	}
+
 	function toggleWindowMode(): void {
-		windowMode = windowMode === 'compact' ? 'expanded' : 'compact';
+		setWindowMode(windowMode === 'compact' ? 'expanded' : 'compact');
 		if (windowMode === 'compact') {
 			projectFormOpen = false;
 			detailPanelOpen = false;
@@ -269,7 +282,7 @@
 		projects = [...projects, workspace];
 		selectedProjectId = workspace.project.id;
 		projectFormOpen = false;
-		windowMode = 'expanded';
+		setWindowMode('expanded');
 		announcement = `${workspace.project.name} created and selected for this session.`;
 		await tick();
 		document.getElementById('project-select')?.focus();
@@ -352,8 +365,9 @@
 	function saveSettings(nextSettings: ModLiSettings): void {
 		settings = nextSettings;
 		timer.updateSettings(nextSettings);
+		void setDesktopAlwaysOnTop(nextSettings.alwaysOnTop);
 		if (!nextSettings.rememberWindow) {
-			windowMode = nextSettings.lastWindowMode;
+			setWindowMode(nextSettings.lastWindowMode);
 		}
 		settingsOpen = false;
 		announcement = 'Settings saved.';
@@ -365,8 +379,21 @@
 		});
 	}
 
-	onMount(() => {
-		const persisted = loadAppState();
+	async function togglePin(): Promise<void> {
+		const nextPinnedState = !settings.alwaysOnTop;
+		const updated = await setDesktopAlwaysOnTop(nextPinnedState);
+		if (!updated) {
+			announcement = 'ModLi could not change the window pin state.';
+			return;
+		}
+		settings = { ...settings, alwaysOnTop: nextPinnedState };
+		announcement = nextPinnedState
+			? 'ModLi will stay above other windows.'
+			: 'ModLi is no longer pinned above other windows.';
+	}
+
+	async function hydrateApp(): Promise<void> {
+		const persisted = await loadAppState();
 		if (persisted) {
 			projects = persisted.projects.length
 				? persisted.projects
@@ -385,6 +412,12 @@
 			if (persisted.timer) timer.restore(persisted.timer);
 		}
 		hydrated = true;
+		await tick();
+		void initializeDesktopWindow(
+			windowMode,
+			settings.alwaysOnTop,
+			settings.rememberWindow,
+		);
 
 		void Promise.all(
 			projects.map(async (workspace) => {
@@ -404,29 +437,31 @@
 				}
 			}),
 		);
+	}
+
+	onMount(() => {
+		void hydrateApp();
 	});
 
 	$effect(() => {
 		if (!hydrated) return;
-		try {
-			saveAppState({
-				version: 1,
-				projects,
-				tasks,
-				settings: {
-					...settings,
-					lastProjectId: selectedProjectId,
-					lastWindowMode: settings.rememberWindow
-						? windowMode
-						: settings.lastWindowMode,
-				},
-				selectedProjectId,
-				windowMode,
-				timer: snapshot,
-			});
-		} catch {
-			announcement = 'ModLi could not save changes in this browser.';
-		}
+		void saveAppState({
+			version: 1,
+			projects,
+			tasks,
+			settings: {
+				...settings,
+				lastProjectId: selectedProjectId,
+				lastWindowMode: settings.rememberWindow
+					? windowMode
+					: settings.lastWindowMode,
+			},
+			selectedProjectId,
+			windowMode,
+			timer: snapshot,
+		}).catch(() => {
+			announcement = 'ModLi could not save changes locally.';
+		});
 	});
 
 	onDestroy(() => {
@@ -444,6 +479,7 @@
 <div
 	class="app-stage"
 	class:app-stage--expanded={windowMode === 'expanded'}
+	class:app-stage--desktop={desktopRuntime}
 	class:app-stage--reduced-motion={settings.reducedMotion}
 	class:app-stage--still={settings.reducedMotion || !settings.backgroundMotion}
 	data-theme={settings.theme}
@@ -464,6 +500,7 @@
 		{settings}
 		{settingsOpen}
 		{windowMode}
+		{desktopRuntime}
 		{projects}
 		{selectedWorkspace}
 		statistics={projectStatistics}
@@ -491,11 +528,16 @@
 		onSaveSettings={saveSettings}
 		onPreviewSound={previewSound}
 		onToggleWindowMode={toggleWindowMode}
+		onTogglePin={() => void togglePin()}
+		onMinimizeWindow={() => void minimizeDesktopWindow()}
+		onCloseWindow={() => void closeDesktopWindow()}
 		onSelectProject={selectProject}
 		onOpenProjectForm={openProjectForm}
 		onCloseProjectForm={closeProjectForm}
 		onCreateProject={createProject}
 	/>
-	<p class="milestone-note">Browser prototype · local session data</p>
+	<p class="milestone-note">
+		{desktopRuntime ? 'Desktop companion' : 'Browser prototype'} · local session data
+	</p>
 	<p class="sr-only" aria-live="polite">{announcement}</p>
 </div>
