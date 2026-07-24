@@ -1,0 +1,11 @@
+import { mount } from 'svelte';
+import App from './App.svelte';
+import './styles/global.css';
+
+const target = document.getElementById('app');
+
+if (!target) {
+	throw new Error('Could not find the ModLi app mount point.');
+}
+
+mount(App, { target });

@@ -1,0 +1,3 @@
+minimumReleaseAgeExclude:
+  - pnpm@11.13.1 || 11.14.0
+  - '@lucide/svelte@1.25.0'

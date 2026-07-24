@@ -1,0 +1,7 @@
+dist
+node_modules
+.pnpm-store
+pnpm-lock.yaml
+modli-wireframe
+AGENTS.md
+MODLI-REDESIGN-SPEC.md
