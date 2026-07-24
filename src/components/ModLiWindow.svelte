@@ -271,6 +271,10 @@
 		position: relative;
 	}
 
+	.modli-window > :global(.settings-backdrop) {
+		position: absolute;
+	}
+
 	.workspace-layout {
 		display: grid;
 		grid-template-columns: minmax(0, 386px);

@@ -17,11 +17,11 @@
 	} = $props();
 
 	let panel: HTMLElement;
-	let draft = $state<ModLiSettings>(structuredClone(DEFAULT_SETTINGS));
+	let draft = $state<ModLiSettings>({ ...DEFAULT_SETTINGS });
 	let error = $state('');
 
 	onMount(() => {
-		draft = structuredClone(settings);
+		draft = { ...settings };
 		panel.querySelector<HTMLElement>('button')?.focus();
 	});
 

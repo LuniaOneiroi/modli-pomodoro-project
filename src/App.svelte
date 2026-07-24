@@ -481,7 +481,7 @@
 		settingsReturnFocus?.focus();
 	}
 
-	function saveSettings(nextSettings: ModLiSettings): void {
+	async function saveSettings(nextSettings: ModLiSettings): Promise<void> {
 		if (activeSessionId && snapshot.status !== 'running') {
 			abandonActiveTimerSession();
 		}
@@ -493,6 +493,8 @@
 		}
 		settingsOpen = false;
 		announcement = 'Settings saved.';
+		await tick();
+		settingsReturnFocus?.focus();
 	}
 
 	function previewSound(volume: number): void {

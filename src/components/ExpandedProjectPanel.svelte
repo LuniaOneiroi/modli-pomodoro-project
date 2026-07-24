@@ -242,6 +242,8 @@
 	}
 
 	.panel-scroll {
+		display: flex;
+		flex-direction: column;
 		height: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
@@ -402,7 +404,10 @@
 	}
 
 	.statistic strong {
-		display: block;
+		display: flex;
+		align-items: baseline;
+		gap: 0.2rem;
+		flex-wrap: wrap;
 		font: 500 1.48rem/1.1 var(--font-numeric);
 		font-variant-numeric: tabular-nums;
 		color: var(--text-primary);
@@ -410,6 +415,7 @@
 
 	.statistic strong span {
 		font-size: 0.72rem;
+		white-space: nowrap;
 		color: var(--text-muted);
 	}
 
@@ -454,6 +460,8 @@
 	}
 
 	.tasks {
+		flex: 1 0 auto;
+		min-height: 13rem;
 		margin: 0 16px 18px;
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-medium);
