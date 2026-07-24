@@ -8,6 +8,9 @@ with Svelte 5, TypeScript, Vite, and Tauri 2.
 > repository supports learning and source visibility; it is not a distributed
 > or supported product release.
 
+[![CI](https://github.com/LuniaOneiroi/modli-pomodoro-project/actions/workflows/ci.yml/badge.svg)](https://github.com/LuniaOneiroi/modli-pomodoro-project/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/LuniaOneiroi/modli-pomodoro-project/actions/workflows/codeql.yml/badge.svg)](https://github.com/LuniaOneiroi/modli-pomodoro-project/actions/workflows/codeql.yml)
+
 ## Current scope
 
 - Focus and break timers that work with or without a selected task
@@ -80,6 +83,19 @@ binaries are not installed yet, install them with:
 ```sh
 pnpm exec playwright install chromium webkit
 ```
+
+## Automated maintenance
+
+GitHub Actions repeats type checking, linting, unit tests, the production build,
+and Chromium/WebKit workflows after pushes to `main` and on pull requests.
+CodeQL scans the JavaScript/TypeScript and Rust source on pushes, pull requests,
+and a weekly schedule. Dependabot checks pnpm, Cargo, and GitHub Actions
+dependencies every Monday and opens pull requests when updates are available.
+
+Workflow results appear on the repository's Actions tab. GitHub notification
+delivery is controlled by each user's notification settings; watching this
+repository with custom **Actions** and **Security alerts** notifications enabled
+is recommended.
 
 The macOS `.app` and `.dmg` are written beneath
 `src-tauri/target/release/bundle/`. Distribution to other Macs requires Apple

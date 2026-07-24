@@ -59,3 +59,7 @@ A Pomodoro session record captures the project and optional task when the timer 
 ## Playwright end-to-end testing
 
 Playwright drives ModLi through the same accessible controls a person uses and verifies complete workflows across Chromium and WebKit. The configuration in `playwright.config.ts` starts an isolated Vite server, while `e2e/modli.spec.ts` covers timer restoration, task and project workflows, image persistence, Settings, keyboard focus, and malformed local data. Each test receives an isolated browser context so its local-first records cannot leak into another test. Component and domain tests are faster for individual rules, but Playwright catches integration and engine-specific behavior that unit tests cannot see.
+
+## GitHub maintenance automation
+
+GitHub Actions runs ModLi's existing quality commands again after pushes and pull requests, so a local oversight becomes a visible failed check before changes are accepted. The workflows in `.github/workflows/` use read-only repository access except for CodeQL's narrowly scoped permission to publish security findings. Dependabot reads the pnpm, Cargo, and workflow manifests weekly and proposes dependency updates as pull requests rather than changing `main` directly. Local checks remain the fastest feedback loop, while repository automation provides an independent, repeatable safety net.
