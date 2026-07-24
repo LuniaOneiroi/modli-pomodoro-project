@@ -93,9 +93,9 @@ and a weekly schedule. Dependabot checks pnpm, Cargo, and GitHub Actions
 dependencies every Monday and opens pull requests when updates are available.
 
 Workflow results appear on the repository's Actions tab. GitHub notification
-delivery is controlled by each user's notification settings; watching this
-repository with custom **Actions** and **Security alerts** notifications enabled
-is recommended.
+delivery is controlled by each user's settings. Watch this repository with
+custom **Security alerts** enabled, then enable failed-workflow delivery under
+**Notification settings → System → Actions**.
 
 The macOS `.app` and `.dmg` are written beneath
 `src-tauri/target/release/bundle/`. Distribution to other Macs requires Apple
